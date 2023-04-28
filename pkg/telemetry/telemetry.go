@@ -23,7 +23,6 @@ type Transaction interface {
 	AddAttribute(string, any)
 	SegmentStart(string)
 	SegmentEnd()
-	DriverName() string
 	Done()
 }
 
