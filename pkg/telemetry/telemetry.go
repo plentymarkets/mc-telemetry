@@ -1,6 +1,7 @@
 package telemetry
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"strings"
@@ -18,10 +19,19 @@ type Driver interface {
 // Transaction ...
 type Transaction interface {
 	Logger
+	Tracer
 	AddAttribute(string, any)
 	SegmentStart(string)
 	SegmentEnd()
+	DriverName() string
 	Done()
+}
+
+// Tracer ...
+type Tracer interface {
+	CreateTrace() string
+	SetTrace(string)
+	Trace() string
 }
 
 // Logger ...
@@ -35,6 +45,9 @@ var registeredDriver map[string]Driver
 
 // loadedDriver is a list of drivers to use for the application
 var loadedDriver []string
+
+// traceDriver is the driver used for the trace
+var traceDriver string
 
 // RegisterDriver adds the possibilty to add a driver to the driver map
 func RegisterDriver(name string, driver Driver) {
@@ -60,24 +73,40 @@ func SetDriver(name ...string) {
 	loadedDriver = name
 }
 
-// TransactionContainer ...
-type TransactionContainer struct {
-	transactions []Transaction
+// SetTraceDriver ...
+func SetTraceDriver(name string) {
+	traceDriver = name
 }
 
-// StartAPM ...
-func StartAPM(name string) TransactionContainer {
+// TransactionContainer ...
+type TransactionContainer struct {
+	transactions map[string]Transaction
+}
+
+// StartTelemetry ...
+func StartTelemetry(name string) (TransactionContainer, error) {
 	transactionContainer := TransactionContainer{
-		transactions: make([]Transaction, len(loadedDriver)),
+		transactions: make(map[string]Transaction, len(loadedDriver)),
 	}
 
 	for _, driverName := range loadedDriver {
 		driver := getDriver(driverName)
 		t := driver.Start(name)
-		transactionContainer.transactions = append(transactionContainer.transactions, t)
+		transactionContainer.transactions[driverName] = t
 	}
 
-	return transactionContainer
+	var trace string
+
+	val, ok := transactionContainer.transactions[traceDriver]
+	if !ok {
+		return transactionContainer, fmt.Errorf("provided telemetry trace driver is not registered. Trace driver name: %s", name)
+	}
+
+	trace = val.CreateTrace()
+
+	transactionContainer.SetTrace(trace)
+
+	return transactionContainer, nil
 }
 
 // AddAttribute adds attributes to the registered driver transactions
@@ -99,6 +128,23 @@ func (tc *TransactionContainer) SegmentEnd() {
 	for _, transaction := range tc.transactions {
 		transaction.SegmentEnd()
 	}
+}
+
+// SetTrace sets the trace for all transactions
+func (tc *TransactionContainer) SetTrace(trace string) {
+	for _, transaction := range tc.transactions {
+		transaction.SetTrace(trace)
+	}
+}
+
+// Trace gets the trace of the transaction used for trace
+func (tc *TransactionContainer) Trace() (string, error) {
+	val, ok := tc.transactions[traceDriver]
+	if !ok {
+		return "", fmt.Errorf("provided telemetry trace driver is not registered. Trace driver name: %s", traceDriver)
+	}
+
+	return val.Trace(), nil
 }
 
 // Done ends the transactions for the registered driver
