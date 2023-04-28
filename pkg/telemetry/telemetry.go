@@ -99,7 +99,7 @@ func StartTelemetry(name string) (TransactionContainer, error) {
 
 	val, ok := transactionContainer.transactions[traceDriver]
 	if !ok {
-		return transactionContainer, fmt.Errorf("provided telemetry trace driver is not registered. Trace driver name: %s", name)
+		return transactionContainer, fmt.Errorf("provided telemetry trace driver is not registered. Trace driver name: %s", traceDriver)
 	}
 
 	trace = val.CreateTrace()
