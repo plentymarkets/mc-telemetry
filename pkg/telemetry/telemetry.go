@@ -82,8 +82,8 @@ type TransactionContainer struct {
 	transactions map[string]Transaction
 }
 
-// StartTelemetry ...
-func StartTelemetry(name string) (TransactionContainer, error) {
+// Start ...
+func Start(name string) (TransactionContainer, error) {
 	transactionContainer := TransactionContainer{
 		transactions: make(map[string]Transaction, len(loadedDriver)),
 	}
