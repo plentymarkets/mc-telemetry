@@ -1,6 +1,7 @@
 package telemetry
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -10,33 +11,42 @@ import (
 // ErrorBytesSize is used for the default error size
 const ErrorBytesSize = 1024
 
+// Default format for telemetry driver errors
+const TelemetryDriverError = "Telemetry error in driver: "
+
 // Driver provides everything the application needs for telemetry
 // Unfortunately go currently does nur support generics inside interface methods
 type Driver interface {
-	Start(string) Transaction
+	Start(string) (Transaction, error)
 }
 
 // Transaction ...
 type Transaction interface {
 	Logger
 	Tracer
-	AddAttribute(string, any)
-	SegmentStart(string)
-	SegmentEnd()
-	Done()
+	AddTransactionAttribute(string, any) error
+	SegmentStart(string) error
+	AddSegmentAttribute(string, any) error
+	SegmentEnd() error
+	Done() error
 }
 
 // Tracer ...
 type Tracer interface {
-	CreateTrace() string
-	SetTrace(string)
-	Trace() string
+	CreateTrace() (string, error)
+	SetTrace(string) error
+	Trace() (string, error)
 }
 
 // Logger ...
 type Logger interface {
-	Info(io.ReadCloser)
-	Error(io.ReadCloser)
+	Info(io.ReadCloser) error
+	Error(io.ReadCloser) error
+}
+
+// ErrorWrapper wrapps up multiple driver errors
+type ErrorWrapper struct {
+	errors []error
 }
 
 // registeredDriver holds all available driver
@@ -90,7 +100,11 @@ func Start(name string) (TransactionContainer, error) {
 
 	for _, driverName := range loadedDriver {
 		driver := getDriver(driverName)
-		t := driver.Start(name)
+		t, err := driver.Start(name)
+		if err != nil {
+			return transactionContainer, fmt.Errorf("%s%s - %v", TelemetryDriverError, driverName, err)
+		}
+
 		transactionContainer.transactions[driverName] = t
 	}
 
@@ -101,55 +115,97 @@ func Start(name string) (TransactionContainer, error) {
 		return transactionContainer, fmt.Errorf("provided telemetry trace driver is not registered. Trace driver name: %s", traceDriver)
 	}
 
-	trace = val.CreateTrace()
+	trace, err := val.CreateTrace()
+	if err != nil {
+		return transactionContainer, fmt.Errorf("%s%s\nFunction: CreateTrace\nError: %v", TelemetryDriverError, traceDriver, err)
+	}
 
-	transactionContainer.SetTrace(trace)
+	err = transactionContainer.SetTrace(trace)
+	if err != nil {
+		return transactionContainer, err
+	}
 
 	return transactionContainer, nil
 }
 
-// AddAttribute adds attributes to the registered driver transactions
-func (tc *TransactionContainer) AddAttribute(name string, attribute any) {
-	for _, transaction := range tc.transactions {
-		transaction.AddAttribute(name, attribute)
+// AddTransactionAttribute adds attributes to the registered driver transactions
+func (tc *TransactionContainer) AddTransactionAttribute(name string, attribute any) {
+	for driverName, transaction := range tc.transactions {
+		err := transaction.AddTransactionAttribute(name, attribute)
+		if err != nil {
+			log.Printf("%s%s\nFunction: AddTransactionAttribute\nError: %v", TelemetryDriverError, driverName, err)
+		}
 	}
 }
 
 // SegmentStart starts a segment in the registered driver transactions
 func (tc *TransactionContainer) SegmentStart(name string) {
-	for _, transaction := range tc.transactions {
-		transaction.SegmentStart(name)
+	for driverName, transaction := range tc.transactions {
+		err := transaction.SegmentStart(name)
+		if err != nil {
+			log.Printf("%s%s\nFunction: SegmentStart\nError: %v", TelemetryDriverError, driverName, err)
+		}
+	}
+}
+
+// AddSegmentAttribute adds attributes to a segment for all driver
+func (tc *TransactionContainer) AddSegmentAttribute(name string, attribute any) {
+	for driverName, transaction := range tc.transactions {
+		err := transaction.AddSegmentAttribute(name, attribute)
+		if err != nil {
+			log.Printf("%s%s\nFunction: AddSegmentAttribute\nError: %v", TelemetryDriverError, driverName, err)
+		}
 	}
 }
 
 // SegmentEnd ends a segment in the registered driver transactions
 func (tc *TransactionContainer) SegmentEnd() {
-	for _, transaction := range tc.transactions {
-		transaction.SegmentEnd()
+	for driverName, transaction := range tc.transactions {
+		err := transaction.SegmentEnd()
+		if err != nil {
+			log.Printf("%s%s\nFunction: SegmentEnd\nError: %v", TelemetryDriverError, driverName, err)
+		}
 	}
 }
 
 // SetTrace sets the trace for all transactions
-func (tc *TransactionContainer) SetTrace(trace string) {
-	for _, transaction := range tc.transactions {
-		transaction.SetTrace(trace)
+func (tc *TransactionContainer) SetTrace(trace string) error {
+	var ew ErrorWrapper
+
+	for driverName, transaction := range tc.transactions {
+		err := transaction.SetTrace(trace)
+		if err != nil {
+			ew.Add(fmt.Errorf("%s%s\nFunction: SetTrace\nError: %v", TelemetryDriverError, driverName, err))
+		}
 	}
+
+	return ew.Error()
 }
 
 // Trace gets the trace of the transaction used for trace
-func (tc *TransactionContainer) Trace() (string, error) {
+func (tc *TransactionContainer) Trace() string {
 	val, ok := tc.transactions[traceDriver]
 	if !ok {
-		return "", fmt.Errorf("provided telemetry trace driver is not registered. Trace driver name: %s", traceDriver)
+		log.Printf("provided telemetry trace driver is not registered. Trace driver name: %s", traceDriver)
+		return ""
 	}
 
-	return val.Trace(), nil
+	trace, err := val.Trace()
+	if err != nil {
+		log.Printf("%s%s\nFunction: Trace\nError: %v", TelemetryDriverError, traceDriver, err)
+		return ""
+	}
+
+	return trace
 }
 
 // Done ends the transactions for the registered driver
 func (tc *TransactionContainer) Done() {
-	for _, transaction := range tc.transactions {
-		transaction.Done()
+	for driverName, transaction := range tc.transactions {
+		err := transaction.Done()
+		if err != nil {
+			log.Printf("%s%s\nFunction: Done\nError: %v", TelemetryDriverError, driverName, err)
+		}
 	}
 }
 
@@ -157,8 +213,11 @@ func (tc *TransactionContainer) Done() {
 func (tc *TransactionContainer) Info(msg *string) {
 	rc := io.NopCloser(strings.NewReader(*msg))
 
-	for _, transaction := range tc.transactions {
-		transaction.Info(rc)
+	for driverName, transaction := range tc.transactions {
+		err := transaction.Info(rc)
+		if err != nil {
+			log.Printf("%s%s\nFunction: Info\nError: %v", TelemetryDriverError, driverName, err)
+		}
 	}
 }
 
@@ -166,7 +225,24 @@ func (tc *TransactionContainer) Info(msg *string) {
 func (tc *TransactionContainer) Error(err *error) {
 	rc := io.NopCloser(strings.NewReader((*err).Error()))
 
-	for _, transaction := range tc.transactions {
-		transaction.Error(rc)
+	for driverName, transaction := range tc.transactions {
+		err := transaction.Error(rc)
+		if err != nil {
+			log.Printf("%s%s\nFunction: Error\nError: %v", TelemetryDriverError, driverName, err)
+		}
 	}
+}
+
+// Error ...
+func (ew *ErrorWrapper) Error() error {
+	if len(ew.errors) == 0 {
+		return nil
+	}
+
+	return errors.Join(ew.errors...)
+}
+
+// Add ...
+func (ew *ErrorWrapper) Add(err error) {
+	ew.errors = append(ew.errors, err)
 }
