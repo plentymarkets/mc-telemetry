@@ -102,7 +102,7 @@ func Start(name string) (TransactionContainer, error) {
 		driver := getDriver(driverName)
 		t, err := driver.Start(name)
 		if err != nil {
-			return transactionContainer, fmt.Errorf("%s%s - %v", TelemetryDriverError, driverName, err)
+			return transactionContainer, fmt.Errorf("%s%s - %w", TelemetryDriverError, driverName, err)
 		}
 
 		transactionContainer.transactions[driverName] = t
@@ -117,7 +117,7 @@ func Start(name string) (TransactionContainer, error) {
 
 	trace, err := val.CreateTrace()
 	if err != nil {
-		return transactionContainer, fmt.Errorf("%s%s\nFunction: CreateTrace\nError: %v", TelemetryDriverError, traceDriver, err)
+		return transactionContainer, fmt.Errorf("%s%s\nFunction: CreateTrace\nError: %w", TelemetryDriverError, traceDriver, err)
 	}
 
 	err = transactionContainer.SetTrace(trace)
@@ -175,7 +175,7 @@ func (tc *TransactionContainer) SetTrace(trace string) error {
 	for driverName, transaction := range tc.transactions {
 		err := transaction.SetTrace(trace)
 		if err != nil {
-			ew.Add(fmt.Errorf("%s%s\nFunction: SetTrace\nError: %v", TelemetryDriverError, driverName, err))
+			ew.Add(fmt.Errorf("%s%s\nFunction: SetTrace\nError: %w", TelemetryDriverError, driverName, err))
 		}
 	}
 
@@ -183,20 +183,18 @@ func (tc *TransactionContainer) SetTrace(trace string) error {
 }
 
 // Trace gets the trace of the transaction used for trace
-func (tc *TransactionContainer) Trace() string {
+func (tc *TransactionContainer) Trace() (string, error) {
 	val, ok := tc.transactions[traceDriver]
 	if !ok {
-		log.Printf("provided telemetry trace driver is not registered. Trace driver name: %s", traceDriver)
-		return ""
+		return "", fmt.Errorf("provided telemetry trace driver is not registered. Trace driver name: %s", traceDriver)
 	}
 
 	trace, err := val.Trace()
 	if err != nil {
-		log.Printf("%s%s\nFunction: Trace\nError: %v", TelemetryDriverError, traceDriver, err)
-		return ""
+		return "", fmt.Errorf("%s%s\nFunction: Trace\nError: %w", TelemetryDriverError, traceDriver, err)
 	}
 
-	return trace
+	return trace, nil
 }
 
 // Done ends the transactions for the registered driver
