@@ -24,6 +24,7 @@ type Driver interface {
 type Transaction interface {
 	Logger
 	Tracer
+	Allocator
 	AddTransactionAttribute(string, any) error
 	SegmentStart(string) error
 	AddSegmentAttribute(string, any) error
@@ -42,6 +43,11 @@ type Tracer interface {
 type Logger interface {
 	Info(io.ReadCloser) error
 	Error(io.ReadCloser) error
+}
+
+// Allocator ...
+type Allocator interface {
+	Erase()
 }
 
 // ErrorWrapper wrapps up multiple driver errors
@@ -204,6 +210,7 @@ func (tc *TransactionContainer) Done() {
 		if err != nil {
 			log.Printf("%s%s\nFunction: Done\nError: %v", TelemetryDriverError, driverName, err)
 		}
+		transaction.Erase()
 	}
 }
 
