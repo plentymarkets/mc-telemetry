@@ -216,9 +216,8 @@ func (tc *TransactionContainer) Done() {
 
 // Info logs informations in the registered driver transactions
 func (tc *TransactionContainer) Info(msg *string) {
-	rc := io.NopCloser(strings.NewReader(*msg))
-
 	for driverName, transaction := range tc.transactions {
+		rc := io.NopCloser(strings.NewReader(*msg))
 		err := transaction.Info(rc)
 		if err != nil {
 			log.Printf("%s%s\nFunction: Info\nError: %v", TelemetryDriverError, driverName, err)
@@ -228,9 +227,8 @@ func (tc *TransactionContainer) Info(msg *string) {
 
 // Error logs errors in the registered driver transactions
 func (tc *TransactionContainer) Error(err *error) {
-	rc := io.NopCloser(strings.NewReader((*err).Error()))
-
 	for driverName, transaction := range tc.transactions {
+		rc := io.NopCloser(strings.NewReader((*err).Error()))
 		err := transaction.Error(rc)
 		if err != nil {
 			log.Printf("%s%s\nFunction: Error\nError: %v", TelemetryDriverError, driverName, err)
