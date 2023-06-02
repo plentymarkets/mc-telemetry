@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"math/big"
 	"strings"
 
 	"github.com/google/uuid"
@@ -29,9 +28,9 @@ type Transaction interface {
 	Tracer
 	Allocator
 	AddTransactionAttribute(string, any) error
-	SegmentStart(big.Int, string) error
-	AddSegmentAttribute(big.Int, string, any) error
-	SegmentEnd(big.Int) error
+	SegmentStart(string, string) error
+	AddSegmentAttribute(string, string, any) error
+	SegmentEnd(string) error
 	Done() error
 }
 
@@ -148,8 +147,8 @@ func (tc *TransactionContainer) AddTransactionAttribute(name string, attribute a
 }
 
 // SegmentStart starts a segment in the registered driver transactions
-func (tc *TransactionContainer) SegmentStart(name string) big.Int {
-	segmentID := createSegmentID()
+func (tc *TransactionContainer) SegmentStart(name string) string {
+	segmentID := uuid.NewString()
 
 	for driverName, transaction := range tc.transactions {
 		err := transaction.SegmentStart(segmentID, name)
@@ -162,7 +161,7 @@ func (tc *TransactionContainer) SegmentStart(name string) big.Int {
 }
 
 // AddSegmentAttribute adds attributes to a segment for all driver
-func (tc *TransactionContainer) AddSegmentAttribute(segmentID big.Int, name string, attribute any) {
+func (tc *TransactionContainer) AddSegmentAttribute(segmentID string, name string, attribute any) {
 	for driverName, transaction := range tc.transactions {
 		err := transaction.AddSegmentAttribute(segmentID, name, attribute)
 		if err != nil {
@@ -172,7 +171,7 @@ func (tc *TransactionContainer) AddSegmentAttribute(segmentID big.Int, name stri
 }
 
 // SegmentEnd ends a segment in the registered driver transactions
-func (tc *TransactionContainer) SegmentEnd(segmentID big.Int) {
+func (tc *TransactionContainer) SegmentEnd(segmentID string) {
 	for driverName, transaction := range tc.transactions {
 		err := transaction.SegmentEnd(segmentID)
 		if err != nil {
@@ -255,16 +254,4 @@ func (ew *ErrorWrapper) Error() error {
 // Add ...
 func (ew *ErrorWrapper) Add(err error) {
 	ew.errors = append(ew.errors, err)
-}
-
-// createSegmentID creates an ID for a segment
-func createSegmentID() big.Int {
-	uuid := uuid.NewString()
-
-	// we can't use parseInt in this case. The generated UUID is a 128bit long string and parse int only supports
-	// up to 64bit int conversions
-	var segmentID big.Int
-	segmentID.SetString(strings.Replace(uuid, "-", "", 4), 16)
-
-	return segmentID
 }
