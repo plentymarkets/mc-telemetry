@@ -100,7 +100,7 @@ type TransactionContainer struct {
 	transactions map[string]Transaction
 }
 
-// Start ...
+// Start returns a transaction container with started transactions of all activated drivers.
 func Start(name string) (TransactionContainer, error) {
 	transactionContainer := TransactionContainer{
 		transactions: make(map[string]Transaction, len(loadedDriver)),
