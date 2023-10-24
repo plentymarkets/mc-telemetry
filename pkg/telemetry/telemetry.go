@@ -19,7 +19,7 @@ const TelemetryDriverError = "Telemetry error in driver: "
 // Driver provides everything the application needs for telemetry
 // Unfortunately go currently does nur support generics inside interface methods
 type Driver interface {
-	Start(string) (Transaction, error)
+	InitializeTransaction(string) (Transaction, error)
 }
 
 // Transaction ...
@@ -27,6 +27,7 @@ type Transaction interface {
 	Logger
 	Tracer
 	Allocator
+	Start(string)
 	AddTransactionAttribute(string, any) error
 	SegmentStart(string, string) error
 	AddSegmentAttribute(string, string, any) error
@@ -108,7 +109,7 @@ func Start(name string) (TransactionContainer, error) {
 
 	for _, driverName := range loadedDriver {
 		driver := getDriver(driverName)
-		t, err := driver.Start(name)
+		t, err := driver.InitializeTransaction(name)
 		if err != nil {
 			return transactionContainer, fmt.Errorf("%s%s - %w", TelemetryDriverError, driverName, err)
 		}
@@ -131,6 +132,10 @@ func Start(name string) (TransactionContainer, error) {
 	err = transactionContainer.SetTrace(trace)
 	if err != nil {
 		return transactionContainer, err
+	}
+
+	for _, transaction := range transactionContainer.transactions {
+		transaction.Start(name)
 	}
 
 	return transactionContainer, nil
