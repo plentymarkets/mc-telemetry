@@ -126,7 +126,7 @@ func Start(name string) (TransactionContainer, error) {
 
 	trace, err := val.CreateTrace()
 	if err != nil {
-		return transactionContainer, fmt.Errorf("%s%s\nFunction: CreateTrace\nError: %w", TelemetryDriverError, traceDriver, err)
+		return transactionContainer, fmt.Errorf("%s%s Function: CreateTrace | Error: %w", TelemetryDriverError, traceDriver, err)
 	}
 
 	err = transactionContainer.SetTrace(trace)
@@ -146,7 +146,7 @@ func (tc *TransactionContainer) AddTransactionAttribute(name string, attribute a
 	for driverName, transaction := range tc.transactions {
 		err := transaction.AddTransactionAttribute(name, attribute)
 		if err != nil {
-			log.Printf("%s%s\nFunction: AddTransactionAttribute\nError: %v", TelemetryDriverError, driverName, err)
+			log.Printf("%s%s Function: AddTransactionAttribute | Error: %v", TelemetryDriverError, driverName, err)
 		}
 	}
 }
@@ -158,7 +158,7 @@ func (tc *TransactionContainer) SegmentStart(name string) string {
 	for driverName, transaction := range tc.transactions {
 		err := transaction.SegmentStart(segmentID, name)
 		if err != nil {
-			log.Printf("%s%s\nFunction: SegmentStart\nError: %v", TelemetryDriverError, driverName, err)
+			log.Printf("%s%s Function: SegmentStart | Error: %v", TelemetryDriverError, driverName, err)
 		}
 	}
 
@@ -170,7 +170,7 @@ func (tc *TransactionContainer) AddSegmentAttribute(segmentID string, name strin
 	for driverName, transaction := range tc.transactions {
 		err := transaction.AddSegmentAttribute(segmentID, name, attribute)
 		if err != nil {
-			log.Printf("%s%s\nFunction: AddSegmentAttribute\nError: %v", TelemetryDriverError, driverName, err)
+			log.Printf("%s%s Function: AddSegmentAttribute | Error: %v", TelemetryDriverError, driverName, err)
 		}
 	}
 }
@@ -180,7 +180,7 @@ func (tc *TransactionContainer) SegmentEnd(segmentID string) {
 	for driverName, transaction := range tc.transactions {
 		err := transaction.SegmentEnd(segmentID)
 		if err != nil {
-			log.Printf("%s%s\nFunction: SegmentEnd\nError: %v", TelemetryDriverError, driverName, err)
+			log.Printf("%s%s Function: SegmentEnd | Error: %v", TelemetryDriverError, driverName, err)
 		}
 	}
 }
@@ -192,7 +192,7 @@ func (tc *TransactionContainer) SetTrace(trace string) error {
 	for driverName, transaction := range tc.transactions {
 		err := transaction.SetTrace(trace)
 		if err != nil {
-			ew.Add(fmt.Errorf("%s%s\nFunction: SetTrace\nError: %w", TelemetryDriverError, driverName, err))
+			ew.Add(fmt.Errorf("%s%s Function: SetTrace | Error: %w", TelemetryDriverError, driverName, err))
 		}
 	}
 
@@ -208,7 +208,7 @@ func (tc *TransactionContainer) Trace() (string, error) {
 
 	trace, err := val.Trace()
 	if err != nil {
-		return "", fmt.Errorf("%s%s\nFunction: Trace\nError: %w", TelemetryDriverError, traceDriver, err)
+		return "", fmt.Errorf("%s%s Function: Trace | Error: %w", TelemetryDriverError, traceDriver, err)
 	}
 
 	return trace, nil
@@ -219,7 +219,7 @@ func (tc *TransactionContainer) Done() {
 	for driverName, transaction := range tc.transactions {
 		err := transaction.Done()
 		if err != nil {
-			log.Printf("%s%s\nFunction: Done\nError: %v", TelemetryDriverError, driverName, err)
+			log.Printf("%s%s Function: Done | Error: %v", TelemetryDriverError, driverName, err)
 		}
 		transaction.Erase()
 	}
@@ -232,7 +232,7 @@ func (tc *TransactionContainer) Info(segmentID string, msg *string) {
 		rc := io.NopCloser(strings.NewReader(*msg))
 		err := transaction.Info(segmentID, rc)
 		if err != nil {
-			log.Printf("%s%s\nFunction: Info\nError: %v", TelemetryDriverError, driverName, err)
+			log.Printf("%s%s | Function: Info | Error: %v", TelemetryDriverError, driverName, err)
 		}
 	}
 }
@@ -244,7 +244,7 @@ func (tc *TransactionContainer) Error(segmentID string, err *error) {
 		rc := io.NopCloser(strings.NewReader((*err).Error()))
 		err := transaction.Error(segmentID, rc)
 		if err != nil {
-			log.Printf("%s%s\nFunction: Error\nError: %v", TelemetryDriverError, driverName, err)
+			log.Printf("%s%s Function: Error | Error: %v", TelemetryDriverError, driverName, err)
 		}
 	}
 }
