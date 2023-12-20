@@ -16,6 +16,16 @@ const ErrorBytesSize = 1024
 // Default format for telemetry driver errors
 const TelemetryDriverError = "Telemetry error in driver: "
 
+// ErrorProcessID ...
+type ErrorProcessID struct {
+	err error
+}
+
+// Error returns the wrapped process id error
+func (ep ErrorProcessID) Error() string {
+	return fmt.Sprintf("ProcessID error. Err: %w", ep.err)
+}
+
 // Driver provides everything the application needs for telemetry
 // Unfortunately go currently does nur support generics inside interface methods
 type Driver interface {
@@ -27,6 +37,7 @@ type Transaction interface {
 	Logger
 	Tracer
 	Allocator
+	Processor
 	Start(string)
 	AddTransactionAttribute(string, any) error
 	SegmentStart(string, string) error
@@ -51,6 +62,13 @@ type Logger interface {
 // Allocator ...
 type Allocator interface {
 	Erase()
+}
+
+// Processor ...
+type Processor interface {
+	CreateProcessID() (string, error)
+	SetProcessID(string) error
+	ProcessID() (string, error)
 }
 
 // ErrorWrapper wrapps up multiple driver errors
@@ -117,21 +135,18 @@ func Start(name string) (TransactionContainer, error) {
 		transactionContainer.transactions[driverName] = t
 	}
 
-	var trace string
-
-	val, ok := transactionContainer.transactions[traceDriver]
-	if !ok {
-		return transactionContainer, fmt.Errorf("provided telemetry trace driver is not registered. Trace driver name: %s", traceDriver)
+	processID, err := transactionContainer.CreateProcessID()
+	if err != nil {
+		return transactionContainer, ErrorProcessID{
+			err: err,
+		}
 	}
 
-	trace, err := val.CreateTrace()
+	err = transactionContainer.SetProcessID(processID)
 	if err != nil {
-		return transactionContainer, fmt.Errorf("%s%s Function: CreateTrace | Error: %w", TelemetryDriverError, traceDriver, err)
-	}
-
-	err = transactionContainer.SetTrace(trace)
-	if err != nil {
-		return transactionContainer, err
+		return transactionContainer, ErrorProcessID{
+			err: err,
+		}
 	}
 
 	for _, transaction := range transactionContainer.transactions {
@@ -139,6 +154,44 @@ func Start(name string) (TransactionContainer, error) {
 	}
 
 	return transactionContainer, nil
+}
+
+// CreateProcessID creates the process id for all drivers depending on the trace driver
+func (tc *TransactionContainer) CreateProcessID() (string, error) {
+	var processID string
+	val, ok := tc.transactions[traceDriver]
+	if !ok {
+		return processID, fmt.Errorf("provided telemetry trace driver is not registered. Trace driver name: %s", traceDriver)
+	}
+
+	processID, err := val.CreateProcessID()
+	if err != nil {
+		return processID, fmt.Errorf("%s%s Function: CreateProcessID | Error: %w", TelemetryDriverError, traceDriver, err)
+	}
+
+	return processID, nil
+}
+
+// StartTracing creates and sets the trace for all drivers depending on the trace driver
+func (tc *TransactionContainer) StartTracing() (string, error) {
+	var trace string
+
+	val, ok := tc.transactions[traceDriver]
+	if !ok {
+		return trace, fmt.Errorf("provided telemetry trace driver is not registered. Trace driver name: %s", traceDriver)
+	}
+
+	trace, err := val.CreateTrace()
+	if err != nil {
+		return trace, fmt.Errorf("%s%s Function: CreateTrace | Error: %w", TelemetryDriverError, traceDriver, err)
+	}
+
+	err = tc.SetTrace(trace)
+	if err != nil {
+		return trace, err
+	}
+
+	return trace, nil
 }
 
 // AddTransactionAttribute adds attributes to the registered driver transactions
@@ -183,6 +236,20 @@ func (tc *TransactionContainer) SegmentEnd(segmentID string) {
 			log.Printf("%s%s Function: SegmentEnd | Error: %v", TelemetryDriverError, driverName, err)
 		}
 	}
+}
+
+// SetProcessID sets the trace for all transactions
+func (tc *TransactionContainer) SetProcessID(processID string) error {
+	var ew ErrorWrapper
+
+	for driverName, transaction := range tc.transactions {
+		err := transaction.SetProcessID(processID)
+		if err != nil {
+			ew.Add(fmt.Errorf("%s%s Function: SetProcessID | Error: %w", TelemetryDriverError, driverName, err))
+		}
+	}
+
+	return ew.Error()
 }
 
 // SetTrace sets the trace for all transactions
