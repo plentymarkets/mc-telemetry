@@ -23,7 +23,7 @@ type ErrorProcessID struct {
 
 // Error returns the wrapped process id error
 func (ep ErrorProcessID) Error() string {
-	return fmt.Sprintf("ProcessID error. Err: %w", ep.err)
+	return fmt.Sprintf("ProcessID error. Err: %s", ep.err)
 }
 
 // Driver provides everything the application needs for telemetry
@@ -51,6 +51,8 @@ type Tracer interface {
 	CreateTrace() (string, error)
 	SetTrace(string) error
 	Trace() (string, error)
+	TraceID() (string, error)
+	SetTraceID(string) error
 }
 
 // Logger ...
@@ -183,10 +185,20 @@ func (tc *TransactionContainer) StartTracing() (string, error) {
 
 	trace, err := val.CreateTrace()
 	if err != nil {
-		return trace, fmt.Errorf("%s%s Function: CreateTrace | Error: %w", TelemetryDriverError, traceDriver, err)
+		return trace, fmt.Errorf("%s%s Function: StartTracing | Error: %w", TelemetryDriverError, traceDriver, err)
 	}
 
 	err = tc.SetTrace(trace)
+	if err != nil {
+		return trace, err
+	}
+
+	traceID, err := val.TraceID()
+	if err != nil {
+		return trace, fmt.Errorf("%s%s Function: StartTracing | Error: %w", TelemetryDriverError, traceDriver, err)
+	}
+
+	err = tc.SetTraceID(traceID)
 	if err != nil {
 		return trace, err
 	}
@@ -273,12 +285,26 @@ func (tc *TransactionContainer) Trace() (string, error) {
 		return "", fmt.Errorf("provided telemetry trace driver is not registered. Trace driver name: %s", traceDriver)
 	}
 
-	trace, err := val.Trace()
+	trace, err := val.TraceID()
 	if err != nil {
 		return "", fmt.Errorf("%s%s Function: Trace | Error: %w", TelemetryDriverError, traceDriver, err)
 	}
 
 	return trace, nil
+}
+
+// SetTraceID sets the trace for all transactions
+func (tc *TransactionContainer) SetTraceID(traceID string) error {
+	var ew ErrorWrapper
+
+	for driverName, transaction := range tc.transactions {
+		err := transaction.SetTraceID(traceID)
+		if err != nil {
+			ew.Add(fmt.Errorf("%s%s Function: SetTraceID | Error: %w", TelemetryDriverError, driverName, err))
+		}
+	}
+
+	return ew.Error()
 }
 
 // Done ends the transactions for the registered driver
