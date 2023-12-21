@@ -73,7 +73,7 @@ type Processor interface {
 	ProcessID() (string, error)
 }
 
-// ErrorWrapper wrapps up multiple driver errors
+// ErrorWrapper wraps up multiple driver errors
 type ErrorWrapper struct {
 	errors []error
 }
@@ -87,7 +87,7 @@ var loadedDriver []string
 // traceDriver is the driver used for the trace
 var traceDriver string
 
-// RegisterDriver adds the possibilty to add a driver to the driver map
+// RegisterDriver adds the possibility to add a driver to the driver map
 func RegisterDriver(name string, driver Driver) {
 	if registeredDriver == nil {
 		registeredDriver = make(map[string]Driver)
@@ -193,16 +193,6 @@ func (tc *TransactionContainer) StartTracing() (string, error) {
 		return trace, err
 	}
 
-	traceID, err := val.TraceID()
-	if err != nil {
-		return trace, fmt.Errorf("%s%s Function: StartTracing | Error: %w", TelemetryDriverError, traceDriver, err)
-	}
-
-	err = tc.SetTraceID(traceID)
-	if err != nil {
-		return trace, err
-	}
-
 	return trace, nil
 }
 
@@ -264,14 +254,30 @@ func (tc *TransactionContainer) SetProcessID(processID string) error {
 	return ew.Error()
 }
 
-// SetTrace sets the trace for all transactions
+// SetTrace sets the traceID for each driver based on the traceDriver
 func (tc *TransactionContainer) SetTrace(trace string) error {
 	var ew ErrorWrapper
 
+	val, ok := tc.transactions[traceDriver]
+	if !ok {
+		return fmt.Errorf("provided telemetry trace driver is not registered. Trace driver name: %s", traceDriver)
+	}
+
+	err := val.SetTrace(trace)
+	if err != nil {
+		return err
+	}
+
+	traceID, err := val.TraceID()
+
 	for driverName, transaction := range tc.transactions {
-		err := transaction.SetTrace(trace)
+		if driverName == traceDriver {
+			continue
+		}
+
+		err := transaction.SetTraceID(traceID)
 		if err != nil {
-			ew.Add(fmt.Errorf("%s%s Function: SetTrace | Error: %w", TelemetryDriverError, driverName, err))
+			ew.Add(fmt.Errorf("%s%s Function: setTraceID | Error: %w", TelemetryDriverError, driverName, err))
 		}
 	}
 
@@ -293,18 +299,28 @@ func (tc *TransactionContainer) Trace() (string, error) {
 	return trace, nil
 }
 
-// SetTraceID sets the trace for all transactions
-func (tc *TransactionContainer) SetTraceID(traceID string) error {
+// setTraceID sets the trace for all transactions
+func (tc *TransactionContainer) setTraceID(traceID string) error {
 	var ew ErrorWrapper
 
 	for driverName, transaction := range tc.transactions {
 		err := transaction.SetTraceID(traceID)
 		if err != nil {
-			ew.Add(fmt.Errorf("%s%s Function: SetTraceID | Error: %w", TelemetryDriverError, driverName, err))
+			ew.Add(fmt.Errorf("%s%s Function: setTraceID | Error: %w", TelemetryDriverError, driverName, err))
 		}
 	}
 
 	return ew.Error()
+}
+
+// TraceID returns the traceID from transaction container
+func (tc *TransactionContainer) TraceID() (string, error) {
+	val, ok := tc.transactions[traceDriver]
+	if !ok {
+		return "", fmt.Errorf("provided telemetry trace driver is not registered. Trace driver name: %s", traceDriver)
+	}
+
+	return val.TraceID()
 }
 
 // Done ends the transactions for the registered driver
