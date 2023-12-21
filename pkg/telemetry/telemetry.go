@@ -291,7 +291,7 @@ func (tc *TransactionContainer) Trace() (string, error) {
 		return "", fmt.Errorf("provided telemetry trace driver is not registered. Trace driver name: %s", traceDriver)
 	}
 
-	trace, err := val.TraceID()
+	trace, err := val.Trace()
 	if err != nil {
 		return "", fmt.Errorf("%s%s Function: Trace | Error: %w", TelemetryDriverError, traceDriver, err)
 	}
