@@ -59,6 +59,7 @@ type Tracer interface {
 type Logger interface {
 	Info(string, io.ReadCloser) error
 	Error(string, io.ReadCloser) error
+	Debug(string, io.ReadCloser) error
 }
 
 // Allocator ...
@@ -354,6 +355,18 @@ func (tc *TransactionContainer) Error(segmentID string, err *error) {
 		err := transaction.Error(segmentID, rc)
 		if err != nil {
 			log.Printf("%s%s Function: Error | Error: %v", TelemetryDriverError, driverName, err)
+		}
+	}
+}
+
+// Debug logs debug in the registered driver transactions
+// If segmentID is empty, the info will be logged directly on the transaction
+func (tc *TransactionContainer) Debug(segmentID string, msg *string) {
+	for driverName, transaction := range tc.transactions {
+		rc := io.NopCloser(strings.NewReader(*msg))
+		err := transaction.Debug(segmentID, rc)
+		if err != nil {
+			log.Printf("%s%s | Function: Debug | Error: %v", TelemetryDriverError, driverName, err)
 		}
 	}
 }
