@@ -13,6 +13,9 @@ import (
 // ErrorBytesSize is used for the default error size
 const ErrorBytesSize = 1024
 
+// DebugByteSize is used for the default Info and Debug size
+const DebugByteSize = 32768
+
 // Default format for telemetry driver errors
 const TelemetryDriverError = "Telemetry error in driver: "
 
