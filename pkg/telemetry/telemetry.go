@@ -178,6 +178,16 @@ func (tc *TransactionContainer) CreateProcessID() (string, error) {
 	return processID, nil
 }
 
+// ProcessID returns the process id for all drivers depending on the trace driver
+func (tc *TransactionContainer) ProcessID() (string, error) {
+	val, ok := tc.transactions[traceDriver]
+	if !ok {
+		return "", fmt.Errorf("provided telemetry trace driver is not registered. Trace driver name: %s", traceDriver)
+	}
+
+	return val.ProcessID()
+}
+
 // StartTracing creates and sets the trace for all drivers depending on the trace driver
 func (tc *TransactionContainer) StartTracing() (string, error) {
 	var trace string
