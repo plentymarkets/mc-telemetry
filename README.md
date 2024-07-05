@@ -1,23 +1,29 @@
 # mc-telemetry: A plentymarkets package for go telemetry
 
-## Purpose: 
+## Purpose
 
-The objective of integrating this package is to enhance the existing logging system by implementing a more sophisticated framework, thereby improving the quality and depth of logged data.
+By integrating the mc-telemetry package we implement a more sophisticated framework. This enhances the existing logging system and improves the quality and depth of logged data.
 
-The telemetry package is designed to facilitate logging into various third-party systems, including New Relic APM, New Relic ZeroLog, and Nope. Additionally, it enables straightforward console logging through the local driver.
+The mc-telemetry package is designed to support logging into various third-party systems, including New Relic APM, New Relic ZeroLog, and Nope. Through the local driver the package also allows for straightforward console logging.
 
-This package includes interfaces for telemetry drivers, allowing the use of abstract interfaces rather than concrete implementations.
+The mc-telemetry package includes interfaces for telemetry drivers, allowing users to use abstract interfaces rather than concrete implementations.
 
-For more details about the available drivers, please refer to: [mc-telemetry-driver](..%2Fmc-telemetry-driver). 
+For more details about available drivers, please refer to: [mc-telemetry-driver](..%2Fmc-telemetry-driver). 
 
 
-## Getting Started:
+## Getting Started
 
-To effectively utilize the Telemetry package, it is necessary to follow a series of steps, beginning with the installation of the appropriate package using the Go installer via the command line interface. This installation process ensures that all the required components of the Telemetry package are correctly set up.
+To effectively use the mc-telemetry package, you first need to do the following: 
 
-Once the installation is complete, further configurations are essential to fully enable the functionality of the Telemetry package. Specifically, you will need to make adjustments in two key areas: the config.yaml file and the environment binder. These configurations are crucial as they define the operational parameters and environment settings necessary for Telemetry to function optimally.
+1. Install the appropriate package by using the *Go* installer via the command line interface.
+   
+   This ensures that all required components of the mc-telemetry package are correctly set up in your system.
+   
+3. Configure the *config.yaml* file and *environment binder* to unlock the full functionality of the mc-telemetry package.
+    
+	**_NOTE:_** These configurations are crucial to unlock the full functionality of the mc-telemetry package as they define necessary operational parameters and environment settings.
 
-The following structure needs to be updated:
+Update below structure as follows:
 
 ```
 my-app/
@@ -29,12 +35,15 @@ my-app/
     └── config.go
 ```
 
-### Install:
-Run command: 
+### Installing the mc-telemetry package
+Run: 
+
 `go get github.com/plentymarkets/mc-telemetry`
 
-### Configuration:
-Step 1. In main.go import the new packages: 
+### Importing the packages and configuring the drivers
+
+**1.** In main.go import the new packages, like so:
+
 ```go
 package main
 
@@ -56,9 +65,10 @@ func main() {
 
 ```
 
-Step 2. In config.yaml - Configure the packages as follows:
+**2.** To configure the packages in the *config.yaml* file, do the following:
 
-Note: This step is required only for development 
+**_Note:_** This is required only for development.
+
 ```yaml
 # cmd/config.yaml
 telemetry:
@@ -70,7 +80,7 @@ telemetry:
     licenseKey: ""
 ```
 
-Step 3. In the default configuration file, bind the environment variables 
+**3.** In the default configuration file, bind the environment variables:
 
 ```go
 // GetConfig returns the configuration
@@ -84,7 +94,7 @@ func GetConfig(path string) (Config, error) {
 
 ### Dynamic Configuration
 
-For example, we can define the ExampleConfig as follows:
+For example, you can define the ExampleConfig as follows:
 
 <table>
     <thead>
@@ -107,7 +117,7 @@ For example, we can define the ExampleConfig as follows:
                 <li>nrZerolog - Run locally and log only to console</li>
                 <li>nopDriver - Run locally and log only to console</li>
             </ul>
-            Note: One or more drivers can be used at once;
+            Note: You can use one or more drivers at once
             </td>
             <td></td>
         </tr>
@@ -122,7 +132,7 @@ For example, we can define the ExampleConfig as follows:
                 <li>nrZerolog - Run locally and log only to console</li>
                 <li>nopDriver - Run locally and log only to console</li>
             </ul>
-            Note: One or more drivers can be used at once;
+            Note: You can use one or more drivers at once
             </td>
             <td></td>
         </tr>
@@ -135,7 +145,7 @@ For example, we can define the ExampleConfig as follows:
         <tr>
             <td><code>telemetry.logLevel</code></td>
             <td><code>TELEMETRY_LOGLEVEL</code></td>
-            <td> There are 3 types of log levels based on there priority
+            <td> There are three types of log levels based on their priority
             <ul>
                 <li><b>error</b> - Highest priority, logs only the errors</li>
                 <li>info - Medium priority, logs both errors and info messages</li>
@@ -154,7 +164,8 @@ For example, we can define the ExampleConfig as follows:
 </table>
 
 
-## How to use telemetry:
+## How to use telemetry
+
 ```go
 // Create the transaction object
 transaction, err := telemetry.Start("Transaction Message")
@@ -176,6 +187,7 @@ transaction.Error(segmentID, &err)  // Requires segmentID string, msg *error
 
 ```
 
-## Dependencies: 
+## Dependencies
+
 - go version >= 1.21
 - [mc-telemetry-driver](https://github.com/plentymarkets/mc-telemetry-driverr)
