@@ -19,7 +19,7 @@ To effectively use the mc-telemetry package, you first need to do the following:
    
    This ensures that all required components of the mc-telemetry package are correctly set up in your system.
    
-3. Configure the *config.yaml* file and *environment binder* to unlock the full functionality of the mc-telemetry package.
+2. Configure the *config.yaml* file and *environment binder* to unlock the full functionality of the mc-telemetry package.
     
 	**_NOTE:_** These configurations are crucial to unlock the full functionality of the mc-telemetry package as they define necessary operational parameters and environment settings.
 
